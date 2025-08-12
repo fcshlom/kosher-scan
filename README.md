@@ -1,69 +1,146 @@
-## kosher-scan (Expo, TypeScript)
+# Kosher Scan - כושרות סריקת כשרויות
 
-Cross-platform React Native app to scan product labels or barcodes, send image to an OCR API, and match against a local Kosher certification list.
+אפליקציה לנייד לסריקת מוצרים ובדיקת כשרותם על פי רשימת המומלצים של כושרות.
 
-### Quick start
+## סקירה כללית
 
-1. Install dependencies:
+אפליקציה זו מאפשרת למשתמשים:
+1. **לצפות ברשימת המומלצים** של כושרות עם עדכון יומי אוטומטי
+2. **לסרוק מוצרים** באמצעות המצלמה ולבדוק אם הם נמצאים ברשימת המומלצים
+3. **לעבוד ללא אינטרנט** לאחר הטעינה הראשונית
 
+## תכונות עיקריות
+
+### 📱 רשימת כשרויות
+- הצגת רשימת המומלצים של כושרות
+- עדכון אוטומטי פעם ביום
+- רענון ידני על ידי משיכה כלפי מטה
+- שמירה מקומית לעבודה ללא אינטרנט
+
+### 📷 סריקת מוצרים
+- שימוש במצלמה לסריקת תוויות כשרות
+- ניתוח התמונה לזיהוי מוצרים
+- השוואה עם רשימת המומלצים
+- הצגת תוצאות מידיות
+
+### 🎨 ממשק משתמש
+- עיצוב מודרני ונקי
+- תמיכה מלאה בעברית
+- ניווט אינטואיטיבי
+- תמיכה במכשירי אנדרואיד ו-iOS
+
+## התקנה והפעלה
+
+### דרישות מקדימות
+- Node.js (גרסה 16 ומעלה)
+- Expo CLI
+- מכשיר אנדרואיד או iPhone
+
+### התקנה
 ```bash
-npm i
+# כניסה לתיקיית הפרויקט
+cd mobile
+
+# התקנת תלויות
+npm install
+
+# הפעלת האפליקציה
+npm start
 ```
 
-2. Configure environment (optional):
-
-- `EXPO_PUBLIC_OCR_API_URL` — OCR endpoint (default `http://localhost:4000/ocr`)
-- `EXPO_PUBLIC_KOSHER_LIST_URL` — Hosted JSON array of certification names
-
-You can add these to your shell env or an `app.config.js`.
-
-3. Run the app:
-
+### בנייה לאנדרואיד
 ```bash
-npm run start
+cd mobile
+npm run android
 ```
 
-Open on iOS/Android via Expo Go, or run a dev build.
-
-### Folder structure
-
-- `src/App.tsx` — Navigation setup
-- `src/screens/CameraScreen.tsx` — Camera capture, OCR call, result navigation
-- `src/screens/ResultScreen.tsx` — Renders positive/negative result
-- `src/screens/SettingsScreen.tsx` — Update kosher list once per day
-- `src/services/ocrClient.ts` — Sends base64 image to OCR API
-- `src/services/kosherList.ts` — Manage list storage and updates
-- `src/utils/matchers.ts` — Text normalization and matching logic
-- `src/data/kosher-list.json` — Mock data
-
-### OCR API (Node.js with Tesseract.js)
-
-Minimal example server:
-
-```ts
-import express from 'express';
-import cors from 'cors';
-import { createWorker } from 'tesseract.js';
-
-const app = express();
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-
-app.post('/ocr', async (req, res) => {
-  try {
-    const { imageBase64 } = req.body;
-    const worker = await createWorker();
-    await worker.loadLanguage('eng+heb');
-    await worker.initialize('eng+heb');
-    const { data } = await worker.recognize(Buffer.from(imageBase64, 'base64'));
-    await worker.terminate();
-    res.json({ text: data.text || '' });
-  } catch (e) {
-    res.status(500).json({ error: 'OCR failed' });
-  }
-});
-
-app.listen(4000, () => console.log('OCR server on :4000'));
+### בנייה ל-iOS
+```bash
+cd mobile
+npm run ios
 ```
 
+## מבנה הפרויקט
+
+```
+kosher-scan/
+├── mobile/                 # אפליקציית React Native
+│   ├── app/               # מסכי האפליקציה
+│   │   ├── _layout.tsx    # מבנה הניווט
+│   │   ├── index.tsx      # מסך ראשי
+│   │   └── camera.tsx     # מסך מצלמה
+│   ├── services/          # שירותים
+│   │   └── kosherService.ts
+│   ├── assets/            # קבצי מדיה
+│   └── package.json       # הגדרות הפרויקט
+└── README.md              # קובץ זה
+```
+
+## טכנולוגיות
+
+- **React Native**: פיתוח אפליקציות לנייד
+- **Expo**: פלטפורמת פיתוח
+- **TypeScript**: תמיכה בטיפוסים
+- **Expo Router**: ניווט בין מסכים
+- **Expo Camera**: גישה למצלמה
+- **Cheerio**: ניתוח HTML
+- **AsyncStorage**: אחסון מקומי
+
+## שימוש באפליקציה
+
+### 1. טעינה ראשונית
+- פתח את האפליקציה
+- האפליקציה תטען את רשימת המומלצים של כושרות
+- הנתונים יישמרו מקומית
+
+### 2. צפייה ברשימת כשרויות
+- במסך הראשי תוצג רשימת המומלצים
+- כל פריט כולל שם המוצר, החברה והכשרות
+- ניתן לרענן על ידי משיכה כלפי מטה
+
+### 3. סריקת מוצר
+- לחץ על "📷 סרוק מוצר"
+- כוון את המצלמה אל תווית הכשרות
+- צלם את התמונה
+- האפליקציה תנתח ותציג תוצאות
+
+## הערות חשובות
+
+- **הרשאות מצלמה**: האפליקציה דורשת הרשאות מצלמה
+- **חיבור לאינטרנט**: נדרש לטעינה ראשונית בלבד
+- **זיהוי טקסט**: כרגע מודגם - בפיתוח עתידי תתווסף OCR אמיתי
+- **עדכונים**: הנתונים מתעדכנים פעם ביום אוטומטית
+
+## פיתוח עתידי
+
+- [ ] שילוב שירות OCR לזיהוי טקסט אמיתי
+- [ ] חיפוש מתקדם ברשימת הכשרויות
+- [ ] התראות על שינויים ברשימת המומלצים
+- [ ] היסטוריית סריקות
+- [ ] שיתוף תוצאות
+- [ ] תמיכה בברקוד
+- [ ] אופציה להוספת הערות אישיות
+
+## תרומה לפרויקט
+
+אם תרצה לתרום לפרויקט:
+1. Fork את הפרויקט
+2. צור branch חדש לתכונה
+3. בצע את השינויים
+4. שלח Pull Request
+
+## רישיון
+
+פרויקט זה פותח לשימוש חינוכי ואישי.
+
+## קישורים שימושיים
+
+- [אתר כושרות](https://www.kosharot.co.il)
+- [רשימת המומלצים](https://www.kosharot.co.il/index2.php?id=281&lang=HEB)
+- [תיעוד Expo](https://docs.expo.dev/)
+- [תיעוד React Native](https://reactnative.dev/)
+
+---
+
+**הערה**: אפליקציה זו היא כלי עזר ואינה מחליפה ייעוץ רבני או בדיקת כשרות מקצועית.
 
