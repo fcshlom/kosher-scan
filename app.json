@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "kosher-scan",
+    "slug": "kosher-scan",
+    "scheme": "kosher-scan",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.kosherscan"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.example.kosherscan"
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera"
+      ]
+    ]
+  }
+}
+
+
