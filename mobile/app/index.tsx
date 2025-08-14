@@ -37,9 +37,10 @@ export default function HomeScreen() {
       
       // Check if we need to update (once per day)
       const lastUpdateTime = await AsyncStorage.getItem('lastUpdateTime');
-      const now = new Date().toDateString();
+      const now = new Date().toISOString();
+      const today = new Date().toDateString();
       
-      if (lastUpdateTime !== now) {
+      if (!lastUpdateTime || new Date(lastUpdateTime).toDateString() !== today) {
         // Fetch new data
         console.log('🔄 Fetching new data...');
         const data = await fetchKosherData();
@@ -61,7 +62,7 @@ export default function HomeScreen() {
           const data = await fetchKosherData();
           setKosherList(data);
         }
-        setLastUpdate(lastUpdateTime || '');
+        setLastUpdate(lastUpdateTime || now);
       }
     } catch (error) {
       console.error('❌ Error loading kosher data:', error);
@@ -80,30 +81,6 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  const testKosherService = async () => {
-    try {
-      console.log('🧪 Testing kosher service...');
-      const data = await fetchKosherData();
-      console.log('📊 Kosher data fetched:', data);
-      console.log('📈 Number of items:', data.length);
-      
-      if (data.length > 0) {
-        console.log('🏷️ Sample item:', data[0]);
-      }
-      
-      // Update the list with the fetched data
-      setKosherList(data);
-      
-      Alert.alert(
-        'בדיקת שירות', 
-        `נמצאו ${data.length} פריטים\n${data.length > 0 ? `דוגמה: ${data[0].name}` : 'לא נמצאו פריטים'}`
-      );
-    } catch (error) {
-      console.error('❌ Test failed:', error);
-      Alert.alert('שגיאה', 'בדיקת השירות נכשלה');
-    }
-  };
-
   const forceRefresh = async () => {
     try {
       setLoading(true);
@@ -111,8 +88,8 @@ export default function HomeScreen() {
       const data = await fetchKosherData();
       setKosherList(data);
       await AsyncStorage.setItem('kosherData', JSON.stringify(data));
-      await AsyncStorage.setItem('lastUpdateTime', new Date().toDateString());
-      setLastUpdate(new Date().toDateString());
+      await AsyncStorage.setItem('lastUpdateTime', new Date().toISOString());
+      setLastUpdate(new Date().toISOString());
       Alert.alert('עדכון', `עודכן בהצלחה! נמצאו ${data.length} פריטים`);
     } catch (error) {
       console.error('❌ Force refresh failed:', error);
@@ -145,7 +122,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <Text style={styles.headerText}>רשימת המומלצים של כושרות</Text>
         <Text style={styles.updateText}>
-          עודכן לאחרונה: {lastUpdate ? new Date(lastUpdate).toLocaleDateString('he-IL') : 'לא ידוע'}
+          עודכן לאחרונה: {lastUpdate ? new Date(lastUpdate).toLocaleString('he-IL') : 'לא ידוע'}
         </Text>
       </View>
 
@@ -169,13 +146,6 @@ export default function HomeScreen() {
         onPress={() => router.push('/camera')}
       >
         <Text style={styles.cameraButtonText}>📷 סרוק מוצר</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.testButton}
-        onPress={testKosherService}
-      >
-        <Text style={styles.testButtonText}>🧪 בדוק שירות</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
