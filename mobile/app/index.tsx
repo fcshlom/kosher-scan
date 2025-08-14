@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchKosherData } from '../services/kosherService';
+import { fetchKosherData, getSampleData } from '../services/kosherService';
 
 interface KosherItem {
   id: string;
@@ -19,7 +19,11 @@ interface KosherItem {
   company: string;
   kosherCertification: string;
   notes?: string;
+  keywords?: string;
+  imageUrl?: string;
 }
+
+const MIN_ITEMS = 100;
 
 export default function HomeScreen() {
   const [kosherList, setKosherList] = useState<KosherItem[]>([]);
@@ -34,22 +38,35 @@ export default function HomeScreen() {
   const loadKosherData = async () => {
     try {
       setLoading(true);
-      
-      // Check if we need to update (once per day)
-      const lastUpdateTime = await AsyncStorage.getItem('lastUpdateTime');
-      const now = new Date().toDateString();
-      
-      if (lastUpdateTime !== now) {
-        // Fetch new data
-        console.log('🔄 Fetching new data...');
+
+      const storedUpdateTime = await AsyncStorage.getItem('lastUpdateTime');
+      const storedDate = storedUpdateTime ? new Date(storedUpdateTime).toISOString().split('T')[0] : '';
+      const nowIso = new Date().toISOString();
+      const today = nowIso.split('T')[0];
+
+      if (storedDate !== today) {
+        console.log('🔄 Fetching new data (date changed)...');
         const data = await fetchKosherData();
-        console.log('💾 Saving data to storage:', data.length, 'items');
-        await AsyncStorage.setItem('kosherData', JSON.stringify(data));
-        await AsyncStorage.setItem('lastUpdateTime', now);
-        setKosherList(data); // Set the data immediately
-        setLastUpdate(now);
+        console.log('📊 fetched items:', data.length);
+
+        if (data.length >= MIN_ITEMS) {
+          await AsyncStorage.setItem('kosherData', JSON.stringify(data));
+          await AsyncStorage.setItem('lastUpdateTime', nowIso);
+          setKosherList(data);
+          setLastUpdate(nowIso);
+        } else {
+          console.log(`⚠️ Expected hundreds of items; got ${data.length}. Keeping cache.`);
+          const cachedData = await AsyncStorage.getItem('kosherData');
+          if (cachedData) {
+            const parsedData = JSON.parse(cachedData);
+            setKosherList(parsedData);
+            setLastUpdate(storedUpdateTime || '');
+          } else {
+            setKosherList(getSampleData());
+            setLastUpdate('');
+          }
+        }
       } else {
-        // Load cached data
         console.log('📱 Loading cached data...');
         const cachedData = await AsyncStorage.getItem('kosherData');
         if (cachedData) {
@@ -57,18 +74,23 @@ export default function HomeScreen() {
           console.log('📱 Loaded cached data:', parsedData.length, 'items');
           setKosherList(parsedData);
         } else {
-          console.log('⚠️ No cached data found, fetching fresh data...');
+          console.log('⚠️ No cached data found, fetching...');
           const data = await fetchKosherData();
-          setKosherList(data);
+          if (data.length >= MIN_ITEMS) {
+            setKosherList(data);
+            await AsyncStorage.setItem('kosherData', JSON.stringify(data));
+            await AsyncStorage.setItem('lastUpdateTime', nowIso);
+            setLastUpdate(nowIso);
+          } else {
+            setKosherList(getSampleData());
+          }
         }
-        setLastUpdate(lastUpdateTime || '');
+        setLastUpdate(storedUpdateTime || lastUpdate);
       }
     } catch (error) {
       console.error('❌ Error loading kosher data:', error);
       Alert.alert('שגיאה', 'לא ניתן לטעון את רשימת הכשרויות');
-      // Load sample data as fallback
-      const sampleData = await fetchKosherData();
-      setKosherList(sampleData);
+      setKosherList(getSampleData());
     } finally {
       setLoading(false);
     }
@@ -80,40 +102,22 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  const testKosherService = async () => {
-    try {
-      console.log('🧪 Testing kosher service...');
-      const data = await fetchKosherData();
-      console.log('📊 Kosher data fetched:', data);
-      console.log('📈 Number of items:', data.length);
-      
-      if (data.length > 0) {
-        console.log('🏷️ Sample item:', data[0]);
-      }
-      
-      // Update the list with the fetched data
-      setKosherList(data);
-      
-      Alert.alert(
-        'בדיקת שירות', 
-        `נמצאו ${data.length} פריטים\n${data.length > 0 ? `דוגמה: ${data[0].name}` : 'לא נמצאו פריטים'}`
-      );
-    } catch (error) {
-      console.error('❌ Test failed:', error);
-      Alert.alert('שגיאה', 'בדיקת השירות נכשלה');
-    }
-  };
-
   const forceRefresh = async () => {
     try {
       setLoading(true);
       console.log('🔄 Force refreshing data...');
       const data = await fetchKosherData();
-      setKosherList(data);
-      await AsyncStorage.setItem('kosherData', JSON.stringify(data));
-      await AsyncStorage.setItem('lastUpdateTime', new Date().toDateString());
-      setLastUpdate(new Date().toDateString());
-      Alert.alert('עדכון', `עודכן בהצלחה! נמצאו ${data.length} פריטים`);
+      console.log('📊 fetched items (force):', data.length);
+      if (data.length >= MIN_ITEMS) {
+        setKosherList(data);
+        await AsyncStorage.setItem('kosherData', JSON.stringify(data));
+        const now = new Date().toISOString();
+        await AsyncStorage.setItem('lastUpdateTime', now);
+        setLastUpdate(now);
+        Alert.alert('עדכון', `עודכן בהצלחה! נמצאו ${data.length} פריטים`);
+      } else {
+        Alert.alert('עדכון', `התקבלו ${data.length} פריטים (פחות מהמינימום ${MIN_ITEMS}), הרשימה לא עודכנה`);
+      }
     } catch (error) {
       console.error('❌ Force refresh failed:', error);
       Alert.alert('שגיאה', 'העדכון נכשל');
@@ -124,10 +128,18 @@ export default function HomeScreen() {
 
   const renderKosherItem = ({ item }: { item: KosherItem }) => (
     <View style={styles.itemContainer}>
-      <Text style={styles.itemName}>{item.name}</Text>
+      <View style={styles.itemHeader}>
+        <Text style={styles.itemName}>{item.name}</Text>
+        {item.imageUrl && (
+          <View style={styles.certificationImage}>
+            <Text style={styles.imageText}>🏷️</Text>
+          </View>
+        )}
+      </View>
       <Text style={styles.itemCompany}>{item.company}</Text>
       <Text style={styles.itemCertification}>{item.kosherCertification}</Text>
       {item.notes && <Text style={styles.itemNotes}>{item.notes}</Text>}
+      {item.keywords && <Text style={styles.itemKeywords}>🏷️ {item.keywords}</Text>}
     </View>
   );
 
@@ -145,7 +157,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <Text style={styles.headerText}>רשימת המומלצים של כושרות</Text>
         <Text style={styles.updateText}>
-          עודכן לאחרונה: {lastUpdate ? new Date(lastUpdate).toLocaleDateString('he-IL') : 'לא ידוע'}
+          עודכן לאחרונה: {lastUpdate ? new Date(lastUpdate).toLocaleString('he-IL') : 'לא ידוע'}
         </Text>
       </View>
 
@@ -172,17 +184,17 @@ export default function HomeScreen() {
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.testButton}
-        onPress={testKosherService}
-      >
-        <Text style={styles.testButtonText}>🧪 בדוק שירות</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
         style={styles.refreshButton}
         onPress={forceRefresh}
       >
         <Text style={styles.refreshButtonText}>🔄 עדכן רשימה</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.testButton}
+        onPress={testKosherService}
+      >
+        <Text style={styles.testButtonText}>🧪 בדיקת שירות</Text>
       </TouchableOpacity>
     </View>
   );
@@ -224,11 +236,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  itemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   itemName: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 4,
+    flex: 1,
   },
   itemCompany: {
     fontSize: 14,
@@ -245,6 +263,24 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 4,
     fontStyle: 'italic',
+  },
+  itemKeywords: {
+    fontSize: 12,
+    color: '#2196F3',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  certificationImage: {
+    width: 30,
+    height: 30,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  imageText: {
+    fontSize: 16,
   },
   loadingContainer: {
     flex: 1,
