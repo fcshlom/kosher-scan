@@ -1,7 +1,10 @@
+import { parse } from 'node-html-parser';
+
 export interface KosherItem {
   id: string;
   name: string;
   company: string;
+  imgSrc: string;
   kosherCertification: string;
   notes?: string;
 }
@@ -13,7 +16,7 @@ export async function fetchKosherData(): Promise<KosherItem[]> {
     const html = await response.text();
     
     console.log('📄 HTML length:', html.length);
-    console.log('📄 First 500 chars:', html.substring(0, 500));
+    console.log('📄 First 50 chars:', html.substring(0, 50));
     
     return parseKosherData(html);
   } catch (error) {
@@ -30,50 +33,32 @@ function parseKosherData(html: string): KosherItem[] {
     console.log('🔍 Starting HTML parsing...');
     
     // Remove HTML tags for better text extraction
-    const cleanText = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    console.log('🧹 Clean text length:', cleanText.length);
-    console.log('🧹 First 300 chars of clean text:', cleanText.substring(0, 300));
-    
-    // Split into lines and filter
-    const lines = cleanText.split(' ').filter(line => line.trim().length > 0);
-    console.log('📝 Number of words:', lines.length);
-    
+    const root = parse(html);
+    const products = root.querySelectorAll('div.product_card');
+
     let currentItem: Partial<KosherItem> = {};
     let itemCount = 0;
     
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      
-      // Look for kosher certification patterns
-      if (line.includes('חתם') || 
-          line.includes('סופר') ||
-          line.includes('בית') ||
-          line.includes('יוסף') || 
-          line.includes('רבנות') ||
-          line.includes('בדץ') ||
-          line.includes('KF') ||
-          line.includes('באישור')) {
-        
-        if (currentItem.name && currentItem.company) {
+    for (let i = 0; i < products.length; i++) {
+      const product = products[i];
+      console.log(product.textContent);
+      const name = product.querySelector('p.prd_title')?.textContent;
+      const notes = product.querySelector('div.remark')?.textContent;
+      const kosherCertification = product.querySelector('div.product_text>strong')?.textContent;
+      const img = product.querySelector('a.parent_image>img')?.getAttribute('src');
+      const keywords = product.querySelector('div.product_keywords')?.textContent.split(',');
           kosherItems.push({
             id: `item_${kosherItems.length + 1}`,
-            name: currentItem.name,
-            company: currentItem.company,
-            kosherCertification: line,
-            notes: currentItem.notes,
+            name: name || '',
+            company: "",
+            imgSrc: img || "",
+            kosherCertification: kosherCertification || "",
+            notes: notes || "",
           });
           itemCount++;
-          console.log(`✅ Found item ${itemCount}:`, currentItem.name, '-', currentItem.company, '-', line);
+          console.log(`✅ Found item ${itemCount}:`, name);
           currentItem = {};
-        }
-      } else if (line.length > 2 && line.length < 50 && !line.includes('http') && !line.includes('www')) {
-        // This might be a product or company name
-        if (!currentItem.name) {
-          currentItem.name = line;
-        } else if (!currentItem.company) {
-          currentItem.company = line;
-        }
-      }
+        
     }
     
     console.log(`📊 Parsing complete. Found ${kosherItems.length} items.`);
