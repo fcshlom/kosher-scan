@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, StyleSheet, FlatList, Alert, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchKosherData } from './services/kosherService';
+import { SearchService } from './services/searchService';
 import { TKosherItem } from './types';
 
 // Import components
@@ -12,6 +13,7 @@ import { KosherModal } from './components/KosherModal';
 import { ActionButtons } from './components/ActionButtons';
 import { LoadingState } from './components/LoadingState';
 import { EmptyState } from './components/EmptyState';
+import { SearchBar } from './components/SearchBar';
 
 export default function HomeScreen() {
   const [kosherList, setKosherList] = useState<TKosherItem[]>([]);
@@ -20,6 +22,15 @@ export default function HomeScreen() {
   const [lastUpdate, setLastUpdate] = useState<string>('');
   const [selectedItem, setSelectedItem] = useState<TKosherItem | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+
+  // Memoized filtered list based on search term
+  const filteredKosherList = useMemo(() => {
+    return SearchService.filterItems(kosherList, {
+      searchTerm,
+      caseSensitive: false,
+    });
+  }, [kosherList, searchTerm]);
 
   useEffect(() => {
     loadKosherData();
@@ -98,6 +109,10 @@ export default function HomeScreen() {
     router.push('/camera');
   };
 
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+  };
+
   if (loading) {
     return <LoadingState />;
   }
@@ -105,9 +120,18 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <KosherHeader lastUpdate={lastUpdate} />
+      
+      <SearchBar
+        onSearch={handleSearch}
+        value={searchTerm}
+        showResultsCount={true}
+        resultsCount={filteredKosherList.length}
+        totalCount={kosherList.length}
+        placeholder="חפש לפי שם, חברה, כשרות או הערות..."
+      />
 
       <FlatList
-        data={kosherList}
+        data={filteredKosherList}
         renderItem={({ item }) => (
           <KosherItem item={item} onPress={openDetails} />
         )}
@@ -141,5 +165,24 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1,
+  },
+  noResultsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  noResultsText: {
+    fontSize: 18,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 8,
+    writingDirection: 'rtl',
+  },
+  noResultsSubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    writingDirection: 'rtl',
   },
 });
