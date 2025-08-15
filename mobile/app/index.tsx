@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { Image, Modal, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchKosherData } from '../services/kosherService';
@@ -17,6 +18,7 @@ interface KosherItem {
   id: string;
   name: string;
   company: string;
+  imgSrc?: string;
   kosherCertification: string;
   notes?: string;
 }
@@ -26,6 +28,8 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<string>('');
+  const [selectedItem, setSelectedItem] = useState<KosherItem | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
     loadKosherData();
@@ -40,7 +44,7 @@ export default function HomeScreen() {
       const now = new Date().toISOString();
       const today = new Date().toDateString();
       
-      if (!lastUpdateTime || new Date(lastUpdateTime).toDateString() !== today) {
+      if (!lastUpdateTime || refreshing || new Date(lastUpdateTime).toDateString() !== today) {
         // Fetch new data
         console.log('🔄 Fetching new data...');
         const data = await fetchKosherData();
@@ -99,13 +103,31 @@ export default function HomeScreen() {
     }
   };
 
+  const openDetails = (item: KosherItem) => {
+    setSelectedItem(item);
+    setModalVisible(true);
+  };
+
   const renderKosherItem = ({ item }: { item: KosherItem }) => (
-    <View style={styles.itemContainer}>
-      <Text style={styles.itemName}>{item.name}</Text>
-      <Text style={styles.itemCompany}>{item.company}</Text>
-      <Text style={styles.itemCertification}>{item.kosherCertification}</Text>
-      {item.notes && <Text style={styles.itemNotes}>{item.notes}</Text>}
-    </View>
+    <TouchableOpacity style={styles.itemContainer} onPress={() => openDetails(item)}>
+      <View style={styles.itemRow}>
+        {item.imgSrc !== '' && (
+          <Image source={{ uri: item.imgSrc }} style={styles.itemImage} />
+        )}
+        <View style={styles.itemContent}>
+          <Text style={styles.itemName}>{item.name}</Text>
+          {item.company ? (
+            <Text style={styles.itemCompany}>{item.company}</Text>
+          ) : null}
+          <Text style={styles.itemCertification}>{item.kosherCertification}</Text>
+          {item.notes ? (
+            <Text style={styles.itemNotes} numberOfLines={2}>
+              {item.notes}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+    </TouchableOpacity>
   );
 
   if (loading) {
@@ -131,6 +153,7 @@ export default function HomeScreen() {
         renderItem={renderKosherItem}
         keyExtractor={(item) => item.id}
         style={styles.list}
+        contentContainerStyle={{ direction: 'ltr' }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -140,6 +163,32 @@ export default function HomeScreen() {
           </View>
         }
       />
+
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContent}>
+            {selectedItem?.imgSrc ? (
+              <Image source={{ uri: selectedItem.imgSrc }} style={styles.modalImage} />
+            ) : null}
+            <Text style={styles.modalTitle}>{selectedItem?.name}</Text>
+            {selectedItem?.company ? (
+              <Text style={styles.modalCompany}>{selectedItem.company}</Text>
+            ) : null}
+            <Text style={styles.modalCertification}>{selectedItem?.kosherCertification}</Text>
+            {selectedItem?.notes ? (
+              <Text style={styles.modalNotes}>{selectedItem.notes}</Text>
+            ) : null}
+            <Pressable style={styles.modalCloseButton} onPress={() => setModalVisible(false)}>
+              <Text style={styles.modalCloseButtonText}>סגור</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       <TouchableOpacity
         style={styles.cameraButton}
@@ -173,12 +222,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
+    writingDirection: 'rtl',
   },
   updateText: {
     fontSize: 12,
     color: '#fff',
     marginTop: 4,
     opacity: 0.8,
+    textAlign: 'center',
+    writingDirection: 'rtl',
   },
   list: {
     flex: 1,
@@ -194,27 +246,120 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  itemRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+  },
+  itemImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 8,
+    backgroundColor: '#eee',
+    marginLeft: 12,
+    marginRight: 0,
+    marginStart: 12,
+    marginEnd: 0,
+  },
+  itemImagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  itemImagePlaceholderText: {
+    fontSize: 10,
+    color: '#999',
+  },
+  itemContent: {
+    flex: 1,
+    writingDirection: 'rtl',
+  },
   itemName: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 4,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   itemCompany: {
     fontSize: 14,
     color: '#666',
     marginBottom: 2,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   itemCertification: {
     fontSize: 14,
     color: '#4CAF50',
     fontWeight: 'bold',
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   itemNotes: {
     fontSize: 12,
     color: '#888',
     marginTop: 4,
     fontStyle: 'italic',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 480,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+  },
+  modalImage: {
+    width: '100%',
+    height: 240,
+    borderRadius: 8,
+    backgroundColor: '#eee',
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 6,
+    textAlign: 'right',
+  },
+  modalCompany: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 6,
+    textAlign: 'right',
+  },
+  modalCertification: {
+    fontSize: 16,
+    color: '#4CAF50',
+    fontWeight: 'bold',
+    marginBottom: 6,
+    textAlign: 'right',
+  },
+  modalNotes: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 12,
+    textAlign: 'right',
+  },
+  modalCloseButton: {
+    alignSelf: 'center',
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  modalCloseButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   loadingContainer: {
     flex: 1,
@@ -236,6 +381,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+    writingDirection: 'rtl',
   },
   cameraButton: {
     backgroundColor: '#2196F3',
