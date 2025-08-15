@@ -1,16 +1,7 @@
 import { parse } from 'node-html-parser';
+import { TKosherItem } from '../types';
 
-export interface KosherItem {
-  id: string;
-  name: string;
-  company: string;
-  imgSrc: string;
-  kosherCertification: string;
-  notes?: string;
-  keywords?: string[];
-}
-
-export async function fetchKosherData(): Promise<KosherItem[]> {
+export async function fetchKosherData(): Promise<TKosherItem[]> {
   try {
     console.log('🌐 Fetching data from kosharot.co.il...');
     const response = await fetch('https://www.kosharot.co.il/index2.php?id=281&lang=HEB');
@@ -27,8 +18,8 @@ export async function fetchKosherData(): Promise<KosherItem[]> {
   }
 }
 
-function parseKosherData(html: string): KosherItem[] {
-  const kosherItems: KosherItem[] = [];
+function parseKosherData(html: string): TKosherItem[] {
+  const kosherItems: TKosherItem[] = [];
   
   try {
     console.log('🔍 Starting HTML parsing...');
@@ -37,7 +28,7 @@ function parseKosherData(html: string): KosherItem[] {
     const root = parse(html);
     const products = root.querySelectorAll('div.product_card');
 
-    let currentItem: Partial<KosherItem> = {};
+    let currentItem: Partial<TKosherItem> = {};
     let itemCount = 0;
     
     const toAbsoluteUrl = (src?: string | null): string => {

@@ -12,23 +12,15 @@ import {
 import { Image, Modal, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchKosherData } from '../services/kosherService';
-
-interface KosherItem {
-  id: string;
-  name: string;
-  company: string;
-  imgSrc?: string;
-  kosherCertification: string;
-  notes?: string;
-}
+import { fetchKosherData } from './services/kosherService';
+import { TKosherItem } from './types';
 
 export default function HomeScreen() {
-  const [kosherList, setKosherList] = useState<KosherItem[]>([]);
+  const [kosherList, setKosherList] = useState<TKosherItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<string>('');
-  const [selectedItem, setSelectedItem] = useState<KosherItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<TKosherItem | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
@@ -103,12 +95,12 @@ export default function HomeScreen() {
     }
   };
 
-  const openDetails = (item: KosherItem) => {
+  const openDetails = (item: TKosherItem) => {
     setSelectedItem(item);
     setModalVisible(true);
   };
 
-  const renderKosherItem = ({ item }: { item: KosherItem }) => (
+  const renderKosherItem = ({ item }: { item: TKosherItem }) => (
     <TouchableOpacity style={styles.itemContainer} onPress={() => openDetails(item)}>
       <View style={styles.itemRow}>
         {item.imgSrc !== '' && (
